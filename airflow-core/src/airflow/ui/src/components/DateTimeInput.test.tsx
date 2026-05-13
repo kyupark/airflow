@@ -17,16 +17,25 @@
  * under the License.
  */
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import type { ChangeEvent } from "react";
+import { describe, expect, it, vi } from "vitest";
 
 import { TimezoneContext } from "src/context/timezone";
 import { Wrapper } from "src/utils/Wrapper";
 
 import { DateTimeInput } from "./DateTimeInput";
 
+const pasteText = (text: string) => {
+  fireEvent.paste(screen.getByTestId("datetime-input"), {
+    clipboardData: {
+      getData: vi.fn().mockReturnValue(text),
+    },
+  });
+};
+
 describe("DateTimeInput paste", () => {
   it("Pastes a valid datetime and fires onChange with UTC value", () => {
-    const onChange = vi.fn();
+    const onChange = vi.fn<(event: ChangeEvent<HTMLInputElement>) => void>();
 
     render(
       <TimezoneContext.Provider value={{ selectedTimezone: "UTC", setSelectedTimezone: vi.fn() }}>
@@ -35,25 +44,14 @@ describe("DateTimeInput paste", () => {
       { wrapper: Wrapper },
     );
 
-    const input = screen.getByTestId("datetime-input");
-    const pasteEvent = new ClipboardEvent("paste", {
-      clipboardData: new DataTransfer(),
-    });
-    Object.defineProperty(pasteEvent, "clipboardData", {
-      value: {
-        getData: vi.fn().mockReturnValue("2026-05-13 10:00:00"),
-      },
-    });
-
-    fireEvent(input, pasteEvent);
+    pasteText("2026-05-13 10:00:00");
 
     expect(onChange).toHaveBeenCalledTimes(1);
-    const callArg = onChange.mock.calls[0][0];
-    expect(callArg.target.value).toBe("2026-05-13T10:00:00.000Z");
+    expect(onChange.mock.calls[0]?.[0].target.value).toBe("2026-05-13T10:00:00.000Z");
   });
 
   it("Interprets timezone-less pasted values in the selected timezone", () => {
-    const onChange = vi.fn();
+    const onChange = vi.fn<(event: ChangeEvent<HTMLInputElement>) => void>();
 
     render(
       <TimezoneContext.Provider
@@ -64,22 +62,11 @@ describe("DateTimeInput paste", () => {
       { wrapper: Wrapper },
     );
 
-    const input = screen.getByTestId("datetime-input");
-    const pasteEvent = new ClipboardEvent("paste", {
-      clipboardData: new DataTransfer(),
-    });
-    Object.defineProperty(pasteEvent, "clipboardData", {
-      value: {
-        getData: vi.fn().mockReturnValue("2026-05-13 10:00:00"),
-      },
-    });
-
-    fireEvent(input, pasteEvent);
+    pasteText("2026-05-13 10:00:00");
 
     expect(onChange).toHaveBeenCalledTimes(1);
-    const callArg = onChange.mock.calls[0][0];
     // 10:00 in New York (EDT, UTC-4) → 14:00 UTC
-    expect(callArg.target.value).toBe("2026-05-13T14:00:00.000Z");
+    expect(onChange.mock.calls[0]?.[0].target.value).toBe("2026-05-13T14:00:00.000Z");
   });
 
   it("Does not fire onChange for an invalid pasted string", () => {
@@ -92,17 +79,7 @@ describe("DateTimeInput paste", () => {
       { wrapper: Wrapper },
     );
 
-    const input = screen.getByTestId("datetime-input");
-    const pasteEvent = new ClipboardEvent("paste", {
-      clipboardData: new DataTransfer(),
-    });
-    Object.defineProperty(pasteEvent, "clipboardData", {
-      value: {
-        getData: vi.fn().mockReturnValue("not a date"),
-      },
-    });
-
-    fireEvent(input, pasteEvent);
+    pasteText("not a date");
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -117,17 +94,7 @@ describe("DateTimeInput paste", () => {
       { wrapper: Wrapper },
     );
 
-    const input = screen.getByTestId("datetime-input");
-    const pasteEvent = new ClipboardEvent("paste", {
-      clipboardData: new DataTransfer(),
-    });
-    Object.defineProperty(pasteEvent, "clipboardData", {
-      value: {
-        getData: vi.fn().mockReturnValue(""),
-      },
-    });
-
-    fireEvent(input, pasteEvent);
+    pasteText("");
 
     expect(onChange).not.toHaveBeenCalled();
   });
